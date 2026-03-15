@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="운동루틴">
+<meta name="theme-color" content="#0a0a0a">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<title>우리 운동 루틴</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0a0a;
+  --surface: #141414;
+  --surface2: #1e1e1e;
+  --border: #2a2a2a;
+  --accent: #C8FF00;
+  --accent-dim: rgba(200,255,0,0.12);
+  --text: #f0f0f0;
+  --text2: #888;
+  --text3: #555;
+  --red: #ff4444;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Noto Sans KR', sans-serif; overflow: hidden; }
+
+/* ── Layout ── */
+#app { display: flex; flex-direction: column; height: 100%; padding-top: var(--safe-top); }
+.screen { display: none; flex-direction: column; flex: 1; overflow: hidden; }
+.screen.active { display: flex; }
+
+/* ── Top bar ── */
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.topbar-title { font-family: 'Bebas Neue', sans-serif; font-size: 24px; letter-spacing: 2px; color: var(--accent); }
+.topbar-sub { font-size: 12px; color: var(--text2); margin-top: 1px; }
+.icon-btn { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border); background: transparent; color: var(--text2); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+
+/* ── Scrollable content ── */
+.scroll-body { flex: 1; overflow-y: auto; padding: 16px 20px; padding-bottom: calc(80px + var(--safe-bottom)); }
+.scroll-body::-webkit-scrollbar { display: none; }
+
+/* ── Week toggle ── */
+.week-toggle { display: flex; gap: 8px; margin-bottom: 20px; }
+.week-btn {
+  flex: 1; padding: 10px; border-radius: 10px;
+  border: 1px solid var(--border); background: transparent;
+  color: var(--text2); font-size: 13px; font-family: 'Noto Sans KR', sans-serif;
+  cursor: pointer; transition: all 0.15s;
+}
+.week-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); font-weight: 500; }
+
+/* ── Day tabs ── */
+.day-tabs { display: flex; gap: 6px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 4px; }
+.day-tabs::-webkit-scrollbar { display: none; }
+.day-tab {
+  flex-shrink: 0; display: flex; flex-direction: column; align-items: center;
+  gap: 4px; padding: 10px 14px; border-radius: 12px;
+  border: 1px solid var(--border); background: transparent; cursor: pointer;
+  transition: all 0.15s;
+}
+.day-tab .day-label { font-size: 13px; font-weight: 500; color: var(--text2); }
+.day-tab .day-dot { width: 5px; height: 5px; border-radius: 50%; background: transparent; }
+.day-tab.has-workout .day-dot { background: var(--text3); }
+.day-tab.active { border-color: var(--accent); background: var(--accent-dim); }
+.day-tab.active .day-label { color: var(--accent); }
+.day-tab.active .day-dot { background: var(--accent); }
+
+/* ── Session header ── */
+.session-header { margin-bottom: 16px; }
+.session-name { font-family: 'Bebas Neue', sans-serif; font-size: 28px; letter-spacing: 1px; color: var(--text); }
+.session-tag { display: inline-block; margin-top: 4px; padding: 3px 10px; border-radius: 20px; background: var(--accent-dim); border: 1px solid rgba(200,255,0,0.3); font-size: 11px; color: var(--accent); letter-spacing: 0.05em; }
+
+/* ── Progress ── */
+.progress-wrap { margin-bottom: 20px; }
+.progress-info { display: flex; justify-content: space-between; font-size: 12px; color: var(--text2); margin-bottom: 6px; }
+.progress-track { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+.progress-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.4s ease; }
+
+/* ── Exercise cards ── */
+.exercise-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 16px; margin-bottom: 12px; overflow: hidden;
+  transition: border-color 0.2s;
+}
+.exercise-card.done { border-color: rgba(200,255,0,0.3); }
+.exercise-header {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px; cursor: pointer;
+}
+.ex-check {
+  width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
+  border: 1.5px solid var(--text3); background: transparent;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s; cursor: pointer;
+}
+.ex-check.checked { background: var(--accent); border-color: var(--accent); }
+.ex-check svg { display: none; }
+.ex-check.checked svg { display: block; }
+.ex-name { flex: 1; font-size: 15px; font-weight: 500; }
+.ex-summary { font-size: 12px; color: var(--text2); }
+.ex-expand { font-size: 18px; color: var(--text3); transition: transform 0.2s; }
+.exercise-card.expanded .ex-expand { transform: rotate(180deg); }
+
+.ex-detail { border-top: 1px solid var(--border); padding: 14px 16px; display: none; }
+.exercise-card.expanded .ex-detail { display: block; }
+
+/* ── Set rows ── */
+.set-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.set-num { font-size: 12px; color: var(--text3); width: 30px; flex-shrink: 0; }
+.set-input-group { display: flex; align-items: center; gap: 6px; flex: 1; }
+.set-field { display: flex; flex-direction: column; gap: 3px; flex: 1; }
+.set-field label { font-size: 10px; color: var(--text3); }
+.set-field input {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 10px; font-size: 14px;
+  color: var(--text); font-family: 'Noto Sans KR', sans-serif;
+  width: 100%; outline: none; transition: border-color 0.15s;
+}
+.set-field input:focus { border-color: var(--accent); }
+.set-check-btn {
+  width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0;
+  border: 1px solid var(--border); background: transparent;
+  color: var(--text3); cursor: pointer; font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s; margin-top: 16px;
+}
+.set-check-btn.done { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+
+.add-set-btn {
+  width: 100%; padding: 8px; border-radius: 8px; margin-top: 4px;
+  border: 1px dashed var(--border); background: transparent;
+  color: var(--text3); font-size: 13px; cursor: pointer;
+  font-family: 'Noto Sans KR', sans-serif; transition: all 0.15s;
+}
+.add-set-btn:active { border-color: var(--accent); color: var(--accent); }
+
+/* ── Rest day ── */
+.rest-day { text-align: center; padding: 48px 0; color: var(--text3); }
+.rest-day .rest-icon { font-size: 48px; margin-bottom: 12px; }
+.rest-day p { font-size: 15px; }
+
+/* ── Finish button ── */
+.finish-btn-wrap {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  padding: 16px 20px;
+  padding-bottom: calc(16px + var(--safe-bottom));
+  background: linear-gradient(to top, var(--bg) 70%, transparent);
+}
+.finish-btn {
+  width: 100%; padding: 16px; border-radius: 14px;
+  background: var(--accent); border: none; color: #0a0a0a;
+  font-size: 16px; font-weight: 700; font-family: 'Noto Sans KR', sans-serif;
+  cursor: pointer; letter-spacing: 0.05em; transition: opacity 0.15s;
+}
+.finish-btn:disabled { opacity: 0.3; }
+.finish-btn:active { opacity: 0.8; }
+
+/* ── History screen ── */
+.history-empty { text-align: center; padding: 60px 0; color: var(--text3); font-size: 14px; }
+.history-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 16px; padding: 16px; margin-bottom: 12px;
+}
+.history-date { font-size: 12px; color: var(--accent); font-weight: 500; margin-bottom: 6px; }
+.history-session { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 1px; margin-bottom: 10px; }
+.history-photo { width: 100%; border-radius: 10px; margin-bottom: 10px; object-fit: cover; max-height: 220px; }
+.history-note { font-size: 13px; color: var(--text2); line-height: 1.6; white-space: pre-wrap; }
+.history-summary { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+.history-ex { font-size: 13px; color: var(--text2); margin-bottom: 4px; }
+.history-ex strong { color: var(--text); font-weight: 500; }
+
+/* ── Bottom nav ── */
+.bottom-nav {
+  display: flex; border-top: 1px solid var(--border);
+  padding-bottom: var(--safe-bottom); flex-shrink: 0;
+  background: var(--bg);
+}
+.nav-btn {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  gap: 4px; padding: 10px 0; border: none; background: transparent;
+  color: var(--text3); cursor: pointer; font-size: 10px;
+  font-family: 'Noto Sans KR', sans-serif; transition: color 0.15s;
+}
+.nav-btn svg { width: 22px; height: 22px; }
+.nav-btn.active { color: var(--accent); }
+
+/* ── Finish modal ── */
+.modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.8); z-index: 100;
+  align-items: flex-end; justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--surface); border-radius: 24px 24px 0 0;
+  width: 100%; max-height: 85vh; overflow-y: auto;
+  padding: 20px 20px calc(20px + var(--safe-bottom));
+}
+.modal::-webkit-scrollbar { display: none; }
+.modal-handle { width: 40px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 20px; }
+.modal-title { font-family: 'Bebas Neue', sans-serif; font-size: 26px; letter-spacing: 1px; margin-bottom: 20px; }
+
+.summary-block { background: var(--surface2); border-radius: 12px; padding: 14px; margin-bottom: 16px; }
+.summary-label { font-size: 11px; color: var(--text3); letter-spacing: 0.08em; margin-bottom: 8px; }
+.summary-ex-row { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+.summary-ex-name { font-size: 14px; font-weight: 500; }
+.summary-ex-sets { font-size: 12px; color: var(--text2); }
+
+.photo-upload-area {
+  border: 1.5px dashed var(--border); border-radius: 12px;
+  padding: 24px; text-align: center; cursor: pointer;
+  margin-bottom: 16px; transition: border-color 0.15s;
+}
+.photo-upload-area:active { border-color: var(--accent); }
+.photo-upload-area p { font-size: 13px; color: var(--text3); margin-top: 6px; }
+.photo-preview { width: 100%; border-radius: 10px; margin-bottom: 16px; display: none; }
+.photo-preview.visible { display: block; }
+
+.note-area {
+  width: 100%; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 12px; padding: 12px 14px; color: var(--text);
+  font-size: 14px; font-family: 'Noto Sans KR', sans-serif;
+  resize: none; outline: none; line-height: 1.6; margin-bottom: 16px;
+}
+.note-area:focus { border-color: var(--accent); }
+
+.modal-actions { display: flex; gap: 10px; }
+.modal-cancel { flex: 1; padding: 14px; border-radius: 12px; border: 1px solid var(--border); background: transparent; color: var(--text2); font-size: 15px; font-family: 'Noto Sans KR', sans-serif; cursor: pointer; }
+.modal-save { flex: 2; padding: 14px; border-radius: 12px; border: none; background: var(--accent); color: #0a0a0a; font-size: 15px; font-weight: 700; font-family: 'Noto Sans KR', sans-serif; cursor: pointer; }
+
+/* ── Toast ── */
+.toast {
+  position: fixed; bottom: calc(90px + var(--safe-bottom)); left: 50%; transform: translateX(-50%) translateY(20px);
+  background: var(--surface2); border: 1px solid var(--border);
+  padding: 10px 20px; border-radius: 20px; font-size: 13px;
+  color: var(--text); opacity: 0; transition: all 0.3s; pointer-events: none; white-space: nowrap; z-index: 200;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ═══ TODAY screen ═══ -->
+  <div class="screen active" id="screen-today">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">WORKOUT</div>
+        <div class="topbar-sub" id="today-date"></div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="icon-btn" id="week-indicator" title="현재 주차" style="font-size:11px;width:auto;padding:0 10px;border-radius:20px;color:var(--accent);border-color:rgba(200,255,0,0.3);">1주차</button>
+      </div>
+    </div>
+    <div class="scroll-body" id="today-body">
+      <!-- dynamic -->
+    </div>
+    <div class="finish-btn-wrap">
+      <button class="finish-btn" id="finish-btn" disabled>운동 완료 기록하기</button>
+    </div>
+  </div>
+
+  <!-- ═══ HISTORY screen ═══ -->
+  <div class="screen" id="screen-history">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">RECORDS</div>
+        <div class="topbar-sub">운동 기록</div>
+      </div>
+    </div>
+    <div class="scroll-body" id="history-body"></div>
+  </div>
+
+  <!-- ═══ Bottom nav ═══ -->
+  <nav class="bottom-nav">
+    <button class="nav-btn active" id="nav-today" onclick="showScreen('today')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <rect x="3" y="4" width="18" height="18" rx="3"/><line x1="3" y1="9" x2="21" y2="9"/>
+        <line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/>
+      </svg>
+      오늘
+    </button>
+    <button class="nav-btn" id="nav-history" onclick="showScreen('history')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/>
+      </svg>
+      기록
+    </button>
+  </nav>
+</div>
+
+<!-- ═══ Finish modal ═══ -->
+<div class="modal-overlay" id="finish-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">오늘 운동 기록</div>
+
+    <div class="summary-block" id="modal-summary"></div>
+
+    <img class="photo-preview" id="photo-preview" src="" alt="운동 사진">
+
+    <label class="photo-upload-area" for="photo-input">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.5">
+        <rect x="3" y="5" width="18" height="15" rx="2"/>
+        <circle cx="8.5" cy="10.5" r="1.5"/><polyline points="21,15 16,10 5,21"/>
+      </svg>
+      <p id="photo-label">사진 첨부 (선택)</p>
+      <input type="file" id="photo-input" accept="image/*" capture="environment" style="display:none">
+    </label>
+
+    <textarea class="note-area" id="note-input" rows="3" placeholder="오늘 운동 소감이나 특이사항을 적어주세요 (선택)"></textarea>
+
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeModal()">취소</button>
+      <button class="modal-save" onclick="saveRecord()">저장하기</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ════════════════════════════════════
+// DATA
+// ════════════════════════════════════
+const ROUTINES = {
+  // week 1
+  '1-1': { name: '가슴 너비', tag: '월요일 · 1주차', exercises: ['펙덱 플라이','케이블 플라이','덤벨 프레스','인클라인 벤치프레스'] },
+  '1-3': { name: '등 너비',   tag: '수요일 · 1주차', exercises: ['랫풀다운 (중립)','랫풀다운 (와이드)','암풀다운','덤벨로우'] },
+  '1-5': { name: '하체',      tag: '금요일 · 1주차', exercises: ['스쿼트','레그 익스텐션','런지'] },
+  '1-0': { name: '어깨',      tag: '일요일 · 1주차', exercises: ['사이드 레터럴 레이즈','페이스 폴','밀리터리 프레스'] },
+  // week 2
+  '2-1': { name: '가슴 두께', tag: '월요일 · 2주차', exercises: ['인클라인 벤치 프레스','인클라인 덤벨 프레스','펙덱 플라이'] },
+  '2-3': { name: '등 두께',   tag: '수요일 · 2주차', exercises: ['바벨로우','T바로우','덤벨로우','랫풀다운'] },
+  '2-5': { name: '하체',      tag: '금요일 · 2주차', exercises: ['스쿼트','레그 익스텐션','런지'] },
+  '2-0': { name: '어깨',      tag: '일요일 · 2주차', exercises: ['사이드 레터럴 레이즈','페이스 폴','밀리터리 프레스'] },
+};
+
+const DAY_NAMES = ['일','월','화','수','목','금','토'];
+const WORKOUT_DAYS = [1,3,5,0]; // mon, wed, fri, sun
+
+// ════════════════════════════════════
+// STATE
+// ════════════════════════════════════
+let state = {
+  week: 1,       // 1 or 2
+  activeDay: new Date().getDay(),
+  sets: {},      // { 'exName': [{reps:'',weight:'',done:false},...] }
+};
+
+function loadState() {
+  try {
+    const s = localStorage.getItem('workout_state');
+    if (s) { const p = JSON.parse(s); Object.assign(state, p); }
+  } catch(e) {}
+}
+
+function saveState() {
+  try { localStorage.setItem('workout_state', JSON.stringify(state)); } catch(e) {}
+}
+
+function getHistory() {
+  try { return JSON.parse(localStorage.getItem('workout_history') || '[]'); } catch(e) { return []; }
+}
+
+function saveHistory(h) {
+  try { localStorage.setItem('workout_history', JSON.stringify(h)); } catch(e) {}
+}
+
+// ════════════════════════════════════
+// ROUTING
+// ════════════════════════════════════
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+  document.getElementById('nav-' + name).classList.add('active');
+  if (name === 'history') renderHistory();
+}
+
+// ════════════════════════════════════
+// TODAY SCREEN
+// ════════════════════════════════════
+function getCurrentRoutine() {
+  const day = state.activeDay;
+  return ROUTINES[state.week + '-' + day] || null;
+}
+
+function getSetKey(exName) { return state.week + '-' + state.activeDay + '-' + exName; }
+
+function ensureSets(exName) {
+  const key = getSetKey(exName);
+  if (!state.sets[key]) {
+    state.sets[key] = [{ reps: '', weight: '', done: false }];
+  }
+  return state.sets[key];
+}
+
+function renderToday() {
+  const body = document.getElementById('today-body');
+  const routine = getCurrentRoutine();
+
+  // date
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('ko-KR', { month:'long', day:'numeric', weekday:'long' });
+  document.getElementById('today-date').textContent = dateStr;
+  document.getElementById('week-indicator').textContent = state.week + '주차';
+
+  let html = '';
+
+  // week toggle
+  html += `<div class="week-toggle">
+    <button class="week-btn ${state.week===1?'active':''}" onclick="setWeek(1)">1주차</button>
+    <button class="week-btn ${state.week===2?'active':''}" onclick="setWeek(2)">2주차</button>
+  </div>`;
+
+  // day tabs
+  html += '<div class="day-tabs">';
+  DAY_NAMES.forEach((d, i) => {
+    const hasWorkout = WORKOUT_DAYS.includes(i);
+    const isActive = i === state.activeDay;
+    html += `<button class="day-tab ${hasWorkout?'has-workout':''} ${isActive?'active':''}" onclick="setDay(${i})">
+      <span class="day-label">${d}</span>
+      <span class="day-dot"></span>
+    </button>`;
+  });
+  html += '</div>';
+
+  if (!routine) {
+    html += `<div class="rest-day"><div class="rest-icon">🛌</div><p>오늘은 휴식일이에요</p></div>`;
+    document.getElementById('finish-btn').disabled = true;
+    body.innerHTML = html;
+    return;
+  }
+
+  // session header
+  html += `<div class="session-header">
+    <div class="session-name">${routine.name}</div>
+    <span class="session-tag">${routine.tag}</span>
+  </div>`;
+
+  // progress
+  const totalEx = routine.exercises.length;
+  const doneEx = routine.exercises.filter(ex => {
+    const sets = state.sets[getSetKey(ex)] || [];
+    return sets.length > 0 && sets.every(s => s.done);
+  }).length;
+  const pct = totalEx > 0 ? Math.round(doneEx / totalEx * 100) : 0;
+
+  html += `<div class="progress-wrap">
+    <div class="progress-info"><span>${doneEx}/${totalEx} 종목 완료</span><span>${pct}%</span></div>
+    <div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>
+  </div>`;
+
+  // exercise cards
+  routine.exercises.forEach((exName, ei) => {
+    const sets = ensureSets(exName);
+    const allDone = sets.length > 0 && sets.every(s => s.done);
+    const doneSets = sets.filter(s => s.done).length;
+    const summary = doneSets > 0 ? `${doneSets}세트 완료` : `${sets.length}세트 예정`;
+
+    html += `<div class="exercise-card ${allDone?'done':''}" id="excard-${ei}">
+      <div class="exercise-header" onclick="toggleExpand(${ei})">
+        <div class="ex-check ${allDone?'checked':''}" onclick="event.stopPropagation();toggleExCheck(${ei},'${exName.replace(/'/g,"\\'")}')">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="#0a0a0a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="ex-name">${exName}</div>
+        <div class="ex-summary">${summary}</div>
+        <div class="ex-expand">⌄</div>
+      </div>
+      <div class="ex-detail">`;
+
+    sets.forEach((set, si) => {
+      const key = getSetKey(exName);
+      html += `<div class="set-row" id="setrow-${ei}-${si}">
+        <div class="set-num">${si+1}세트</div>
+        <div class="set-input-group">
+          <div class="set-field">
+            <label>중량 (kg)</label>
+            <input type="number" inputmode="decimal" placeholder="0" value="${set.weight}"
+              onchange="updateSet('${exName.replace(/'/g,"\\'")}',${si},'weight',this.value)">
+          </div>
+          <div class="set-field">
+            <label>횟수</label>
+            <input type="number" inputmode="numeric" placeholder="0" value="${set.reps}"
+              onchange="updateSet('${exName.replace(/'/g,"\\'")}',${si},'reps',this.value)">
+          </div>
+          <button class="set-check-btn ${set.done?'done':''}" onclick="toggleSetDone('${exName.replace(/'/g,"\\'")}',${si})">
+            ${set.done ? '✓' : '○'}
+          </button>
+        </div>
+      </div>`;
+    });
+
+    html += `<button class="add-set-btn" onclick="addSet('${exName.replace(/'/g,"\\'")}')">+ 세트 추가</button>
+      </div>
+    </div>`;
+  });
+
+  body.innerHTML = html;
+
+  // restore expanded states
+  if (window._expanded) {
+    window._expanded.forEach(ei => {
+      const card = document.getElementById('excard-' + ei);
+      if (card) card.classList.add('expanded');
+    });
+  }
+
+  // finish btn
+  const anyDone = routine.exercises.some(ex => {
+    const sets = state.sets[getSetKey(ex)] || [];
+    return sets.some(s => s.done);
+  });
+  document.getElementById('finish-btn').disabled = !anyDone;
+}
+
+function toggleExpand(ei) {
+  const card = document.getElementById('excard-' + ei);
+  card.classList.toggle('expanded');
+  if (!window._expanded) window._expanded = new Set();
+  if (card.classList.contains('expanded')) window._expanded.add(ei);
+  else window._expanded.delete(ei);
+}
+
+function toggleExCheck(ei, exName) {
+  const sets = ensureSets(exName);
+  const allDone = sets.every(s => s.done);
+  sets.forEach(s => s.done = !allDone);
+  saveState(); renderToday();
+}
+
+function updateSet(exName, si, field, val) {
+  const key = getSetKey(exName);
+  if (state.sets[key] && state.sets[key][si]) {
+    state.sets[key][si][field] = val;
+    saveState();
+  }
+}
+
+function toggleSetDone(exName, si) {
+  const key = getSetKey(exName);
+  if (state.sets[key] && state.sets[key][si]) {
+    state.sets[key][si].done = !state.sets[key][si].done;
+    saveState(); renderToday();
+  }
+}
+
+function addSet(exName) {
+  const key = getSetKey(exName);
+  if (!state.sets[key]) state.sets[key] = [];
+  const last = state.sets[key][state.sets[key].length - 1];
+  state.sets[key].push({ reps: last ? last.reps : '', weight: last ? last.weight : '', done: false });
+  saveState(); renderToday();
+}
+
+function setWeek(w) {
+  state.week = w;
+  window._expanded = new Set();
+  saveState(); renderToday();
+}
+
+function setDay(d) {
+  state.activeDay = d;
+  window._expanded = new Set();
+  saveState(); renderToday();
+}
+
+// ════════════════════════════════════
+// FINISH MODAL
+// ════════════════════════════════════
+let pendingPhoto = null;
+
+function buildSummaryHTML() {
+  const routine = getCurrentRoutine();
+  if (!routine) return '';
+  let html = `<div class="summary-label">${routine.tag} — ${routine.name}</div>`;
+  routine.exercises.forEach(exName => {
+    const sets = (state.sets[getSetKey(exName)] || []).filter(s => s.done);
+    if (sets.length === 0) return;
+    const setStrs = sets.map((s,i) => {
+      let str = `${i+1}세트`;
+      if (s.weight) str += ` ${s.weight}kg`;
+      if (s.reps) str += ` × ${s.reps}회`;
+      return str;
+    }).join(' · ');
+    html += `<div class="summary-ex-row">
+      <div class="summary-ex-name">${exName}</div>
+      <div class="summary-ex-sets">${setStrs}</div>
+    </div>`;
+  });
+  return html;
+}
+
+document.getElementById('finish-btn').addEventListener('click', () => {
+  document.getElementById('modal-summary').innerHTML = buildSummaryHTML();
+  document.getElementById('note-input').value = '';
+  document.getElementById('photo-preview').classList.remove('visible');
+  document.getElementById('photo-label').textContent = '사진 첨부 (선택)';
+  pendingPhoto = null;
+  document.getElementById('finish-modal').classList.add('open');
+});
+
+document.getElementById('photo-input').addEventListener('change', function() {
+  const file = this.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    pendingPhoto = e.target.result;
+    const preview = document.getElementById('photo-preview');
+    preview.src = pendingPhoto;
+    preview.classList.add('visible');
+    document.getElementById('photo-label').textContent = '사진 변경';
+  };
+  reader.readAsDataURL(file);
+});
+
+function closeModal() {
+  document.getElementById('finish-modal').classList.remove('open');
+}
+
+function saveRecord() {
+  const routine = getCurrentRoutine();
+  if (!routine) return;
+
+  const now = new Date();
+  const exercises = {};
+  routine.exercises.forEach(exName => {
+    const sets = (state.sets[getSetKey(exName)] || []).filter(s => s.done);
+    if (sets.length > 0) exercises[exName] = sets;
+  });
+
+  const record = {
+    id: Date.now(),
+    date: now.toISOString(),
+    week: state.week,
+    day: state.activeDay,
+    sessionName: routine.name,
+    tag: routine.tag,
+    exercises,
+    note: document.getElementById('note-input').value.trim(),
+    photo: pendingPhoto || null,
+  };
+
+  const history = getHistory();
+  history.unshift(record);
+  saveHistory(history);
+
+  closeModal();
+  showToast('기록이 저장됐어요 💪');
+}
+
+// ════════════════════════════════════
+// HISTORY SCREEN
+// ════════════════════════════════════
+function renderHistory() {
+  const body = document.getElementById('history-body');
+  const history = getHistory();
+
+  if (history.length === 0) {
+    body.innerHTML = '<div class="history-empty">아직 기록이 없어요<br>운동을 완료하고 첫 기록을 남겨보세요!</div>';
+    return;
+  }
+
+  body.innerHTML = history.map(r => {
+    const d = new Date(r.date);
+    const dateStr = d.toLocaleDateString('ko-KR', { year:'numeric', month:'long', day:'numeric', weekday:'short' });
+    const timeStr = d.toLocaleTimeString('ko-KR', { hour:'2-digit', minute:'2-digit' });
+
+    let exHtml = '';
+    Object.entries(r.exercises).forEach(([exName, sets]) => {
+      const setStrs = sets.map((s,i) => {
+        let str = `${i+1}세트`;
+        if (s.weight) str += ` ${s.weight}kg`;
+        if (s.reps) str += `×${s.reps}회`;
+        return str;
+      }).join(' · ');
+      exHtml += `<div class="history-ex"><strong>${exName}</strong> ${setStrs}</div>`;
+    });
+
+    return `<div class="history-card">
+      <div class="history-date">${dateStr} ${timeStr}</div>
+      <div class="history-session">${r.sessionName}</div>
+      ${r.photo ? `<img class="history-photo" src="${r.photo}" alt="운동 사진">` : ''}
+      ${r.note ? `<div class="history-note">${r.note}</div>` : ''}
+      <div class="history-summary">${exHtml}</div>
+    </div>`;
+  }).join('');
+}
+
+// ════════════════════════════════════
+// UTILS
+// ════════════════════════════════════
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// close modal on overlay click
+document.getElementById('finish-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// ════════════════════════════════════
+// INIT
+// ════════════════════════════════════
+loadState();
+renderToday();
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
